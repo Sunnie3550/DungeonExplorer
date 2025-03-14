@@ -29,6 +29,7 @@ namespace DungeonExplorer
             currentRoom = new Room("Entrance Hall", "A dark, eerie entrance."); // Creating the starting room
         }
 
+
         // Starts the game loop
         public void Start()
         {
