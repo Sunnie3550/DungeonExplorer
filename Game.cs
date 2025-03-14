@@ -1,123 +1,166 @@
 using System;
-using System.Media;
+using System.Collections.Generic;
 
-namespace DungeonExplorer
+namespace DungeonExplorer 
+// Main entry point of the game
 {
-    // The main entry point of the game
     internal class Program
     {
         static void Main()
         {
-            // Create a new game instance and start the game
-            Game game = new Game();
+            Game game = new Game(); // Create a new game instance
             game.Start();
         }
     }
 
-    // The Game class controls the overall game flow
     internal class Game
     {
-        private Player player; // The player in the game
-        private Room currentRoom; // The room the player is currently in
+        private Player player;
+        private List<Room> rooms;
+        private int currentRoomIndex;
 
-        // Constructor: Initializes the game by setting up the player and the first room
         public Game()
         {
             Console.Write("Enter your name: ");
             string playerName = Console.ReadLine();
-            player = new Player(playerName); // Creating a player with the entered name
-            currentRoom = new Room("Entrance Hall", "A dark, eerie entrance."); // Creating the starting room
+            player = new Player(playerName); // Create a player with the given name
+
+          // Initialize rooms with their names, descriptions, items, and monsters
+            rooms = new List<Room>
+            {
+                new Room("Dark Cave", "A damp cave with eerie sounds.", "Sword", "Goblin"),
+                new Room("Ancient Library", "A dusty library filled with old books.", "Magic Scroll", "Ghost"),
+                new Room("Treasure Chamber", "A golden chamber filled with riches.", "Golden Key", null)
+            };
+
+            currentRoomIndex = 0;
         }
 
-
-        // Starts the game loop
         public void Start()
         {
-            bool playing = true; // Game is running until the player exits
-            Console.WriteLine("Welcome to Dungeon Explorer!");
-            Console.WriteLine("Type 'exit' to quit.");
-            Console.WriteLine($"Hello, {player.Name}! You have {player.Health} health points. Let's begin!");
+            Console.WriteLine($"Welcome, {player.Name}! You have {player.Health} health points."); //Greets the player
+            Console.WriteLine("Type 'explore' to enter a room, 'pickup' to take an item, 'inventory' to check items, or 'exit' to quit."); //Gives instruction on the player should play the game
 
-            while (playing && player.Health > 0)
+            while (player.Health > 0 && currentRoomIndex < rooms.Count)
             {
-                // Display the current room details
-                Console.WriteLine($"You are in {currentRoom.Name} - {currentRoom.Description}");
+                Room currentRoom = rooms[currentRoomIndex]; // Display the room's description
+                Console.WriteLine(currentRoom.GetDescription());
                 Console.Write("Enter command: ");
                 string input = Console.ReadLine().ToLower();
 
-                // Handle user input
-                if (input == "exit")
+                if (input == "exit") // Quit the game
                 {
-                    playing = false; // Stop the game loop
                     Console.WriteLine("Thanks for playing!");
+                    break;
                 }
-                else if (input == "left")
+                else if (input == "explore") // Starts the game
                 {
-                    Console.WriteLine("You found a treasure chest! You win!");
-                    playing = false;
-                }
-                else if (input == "right")
-                {
-                    Console.WriteLine("You fell into a pit! You lose 1 health.");
-                    player.DecreaseHealth();
-                }
-                else if (input == "forward")
-                {
-                    Console.WriteLine("A monster appears! You escape but lose 1 health.");
-                    player.DecreaseHealth();
-                }
-                else
-                {
-                    Console.WriteLine("Invalid command! You stumble and lose 1 health.");
-                    player.DecreaseHealth();
-                }
+                    if (currentRoom.Monster != null) // a moster attacks you
+                    {
+                        Console.WriteLine($"A {currentRoom.Monster} attacks you!");
+                        player.TakeDamage(20);
+                        if (player.Health <= 0)
+                        {
+                            Console.WriteLine("You have been defeated! Game Over."); // Game over
+                            break;
+                        }
+                    }
 
-                // Check if the player still has health remaining
-                if (player.Health > 0)
+                    if (currentRoomIndex < rooms.Count - 1)
+                    {
+                        Console.WriteLine("You move deeper into the dungeon...");
+                        currentRoomIndex++;
+                    }
+                    else
+                    {
+                        Console.WriteLine("This is the last room. You cannot explore further.");
+                    }
+                }
+                else if (input == "pickup")
                 {
-                    Console.WriteLine($"{player.Name}, you now have {player.Health} health points remaining.");
+                    if (currentRoom.Item != null)
+                    {
+                        player.PickUpItem(currentRoom.Item);
+                        currentRoom.Item = null; // Item is removed after pickup
+                    }
+                    else
+                    {
+                        Console.WriteLine("There is nothing to pick up here.");
+                    }
+                }
+                else if (input == "inventory")
+                {
+                    player.ShowInventory();
                 }
                 else
                 {
-                    Console.WriteLine($"{player.Name}, you have lost all your health. Game Over!");
-                    playing = false;
+                    Console.WriteLine("Invalid command. Try again.");
                 }
+            }
+
+            if (player.Health > 0 && currentRoomIndex >= rooms.Count)
+            {
+                Console.WriteLine("Congratulations! You have explored all rooms and survived the dungeon."); // You won the game
             }
         }
     }
 
-    // The Player class represents the player in the game
     internal class Player
     {
-        public string Name { get; } // Player's name (read-only)
-        public int Health { get; private set; } // Player's health (modifiable only within the class)
+        public string Name { get; }
+        public int Health { get; private set; }
+        private List<string> inventory;
 
-        // Constructor: Creates a player with a given name and initializes health
         public Player(string name)
         {
             Name = name;
-            Health = 3;
+            Health = 100; // Player starts with 100 health points
+            inventory = new List<string>();
         }
 
-        // Decrease player's health
-        public void DecreaseHealth()
+        public void TakeDamage(int damage)
         {
-            Health--;
+            Health -= damage; // Reduces your health
+            Console.WriteLine($"You lost {damage} health points. Remaining health: {Health}");
+        }
+
+        public void PickUpItem(string item)
+        {
+            inventory.Add(item); // Add item to your inventory
+            Console.WriteLine($"You picked up: {item}"); // You picked an item
+        }
+
+        public void ShowInventory()
+        {
+            if (inventory.Count == 0)
+            {
+                Console.WriteLine("Your inventory is empty.");
+            }
+            else
+            {
+                Console.WriteLine("Inventory: " + string.Join(", ", inventory));
+            }
         }
     }
 
-    // The Room class represents a room in the game
     internal class Room
     {
-        public string Name { get; } // Room name (read-only)
-        public string Description { get; } // Room description (read-only)
+        public string Name { get; } // Room name
+        public string Description { get; } // Room descriptions
+        public string Item { get; set; } // Item present in a room (if any)
+        public string Monster { get; } // Monster present in a room (if any)
 
-        // Constructor: Creates a room with a name and description
-        public Room(string name, string description)
+        public Room(string name, string description, string item, string monster)
         {
             Name = name;
             Description = description;
+            Item = item;
+            Monster = monster;
+        }
+
+        public string GetDescription()
+        {
+            return $"You have entered {Name}. {Description} {(Item != null ? "You see a " + Item + " here." : "")} {(Monster != null ? "A " + Monster + " lurks nearby!" : "")}";
         }
     }
 }
-            
